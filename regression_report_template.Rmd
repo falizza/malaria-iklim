@@ -55,6 +55,6 @@ if(nrow(params$regression_data) > 0) {
 }
 ```
 
-# Kesimpulan
+# Note
 
 Analisis regresi `r params$model_type` telah dilakukan untuk data Provinsi `r params$province`.

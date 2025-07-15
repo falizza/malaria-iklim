@@ -455,7 +455,7 @@ create_home_tab <- function() {
               div(class = "user-guide-section",
                   h3("📚 Panduan Pengguna"),
                   p("Pelajari cara menggunakan dashboard ini dengan mengunduh panduan pengguna lengkap dalam format PDF."),
-                  tags$a(href = "user-guide.pdf", target = "_blank", 
+                  tags$a(href = "userguide.pdf", target = "_blank", 
                          class = "user-guide-btn",
                          tags$i(class = "fa fa-file-pdf-o"),
                          "Download Panduan Pengguna (PDF)"
