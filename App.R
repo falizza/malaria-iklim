@@ -15,6 +15,9 @@ library(DT)
 library(ggplot2)
 library(broom)
 library(plotly)
+library(rmarkdown)
+library(knitr)
+library(gridExtra)
 
 # =====================================
 # DATA PREPARATION
@@ -303,6 +306,62 @@ custom_css <- "
     flex-shrink: 0;
   }
   
+  /* User Guide Button Styles */
+  .user-guide-btn {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    padding: 15px 30px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    margin: 20px auto;
+    width: fit-content;
+  }
+  
+  .user-guide-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+    background: linear-gradient(135deg, #218838 0%, #1db584 100%);
+    color: white;
+    text-decoration: none;
+  }
+  
+  .user-guide-btn i {
+    margin-right: 10px;
+    font-size: 18px;
+  }
+  
+  .user-guide-section {
+    background: linear-gradient(135deg, #e8f5e8 0%, #d4edda 100%);
+    border-radius: 15px;
+    padding: 30px;
+    margin: 30px 0;
+    text-align: center;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.05);
+    border-left: 5px solid #28a745;
+  }
+  
+  .user-guide-section h3 {
+    color: #155724;
+    margin-bottom: 15px;
+    font-size: 1.4em;
+  }
+  
+  .user-guide-section p {
+    color: #155724;
+    font-size: 14px;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  
   @media (max-width: 1200px) {
     .timeline-weeks {flex-wrap: wrap;}
     .timeline-week {flex: 0 0 calc(50% - 20px); margin-bottom: 20px;}
@@ -310,6 +369,74 @@ custom_css <- "
   }
   @media (max-width: 768px) {
     .timeline-week {flex: 0 0 calc(100% - 20px);}
+  } 
+  .interpretation-box {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-left: 5px solid #3498db;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 15px 0;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+  
+  .interpretation-title {
+    color: #2c3e50;
+    font-size: 1.2em;
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .interpretation-title i {
+    margin-right: 8px;
+    color: #3498db;
+  }
+  
+  .interpretation-content {
+    color: #34495e;
+    line-height: 1.6;
+    font-size: 0.95em;
+  }
+  
+  .interpretation-highlight {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border-left: 4px solid #f39c12;
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin: 10px 0;
+  }
+  
+  .correlation-interpretation {
+    background: linear-gradient(135deg, #e8f5e8 0%, #d4edda 100%);
+    border-left: 4px solid #28a745;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+  }
+  
+  .trend-indicator {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    margin: 0 5px;
+  }
+  
+  .trend-increasing {
+    background: #ffebee;
+    color: #c62828;
+  }
+  
+  .trend-decreasing {
+    background: #e8f5e8;
+    color: #2e7d32;
+  }
+  
+  .trend-stable {
+    background: #fff3e0;
+    color: #ef6c00;
   }
 "
 
@@ -318,10 +445,22 @@ custom_css <- "
 # =====================================
 
 # UI Helper Functions ----
+# UI Helper Functions ----
 create_home_tab <- function() {
   tabItem(tabName = "home",
           div(style = "padding: 20px;",
               h1("Selamat Datang di Dashboard Malaria Indonesia", class = "main-title"),
+              
+              # User Guide Section
+              div(class = "user-guide-section",
+                  h3("📚 Panduan Pengguna"),
+                  p("Pelajari cara menggunakan dashboard ini dengan mengunduh panduan pengguna lengkap dalam format PDF."),
+                  tags$a(href = "user-guide.pdf", target = "_blank", 
+                         class = "user-guide-btn",
+                         tags$i(class = "fa fa-file-pdf-o"),
+                         "Download Panduan Pengguna (PDF)"
+                  )
+              ),
               
               # Summary Statistics
               h2("Ringkasan Statistik Data Malaria", class = "section-title"),
@@ -406,6 +545,45 @@ create_home_tab <- function() {
           )
   )
 }
+## Bantuan untuk interpretasi time series 
+add_interpretation_ui <- function() {
+  fluidRow(
+    box(
+      title = "Interpretasi Analisis Time Series", 
+      status = "info", 
+      solidHeader = TRUE, 
+      width = 12,
+      div(class = "interpretation-box",
+          div(class = "interpretation-title",
+              icon("chart-line"),
+              "Analisis Trend dan Pola"
+          ),
+          div(class = "interpretation-content",
+              htmlOutput("trend_interpretation")
+          )
+      )
+    )
+  )
+}
+add_correlation_interpretation_ui <- function() {
+  fluidRow(
+    box(
+      title = "Interpretasi Korelasi", 
+      status = "success", 
+      solidHeader = TRUE, 
+      width = 12,
+      div(class = "correlation-interpretation",
+          div(class = "interpretation-title",
+              icon("network-wired"),
+              "Analisis Hubungan Antar Variabel"
+          ),
+          div(class = "interpretation-content",
+              htmlOutput("correlation_interpretation")
+          )
+      )
+    )
+  )
+}
 
 create_time_series_tab <- function() {
   tabItem(tabName = "time_series",
@@ -446,7 +624,12 @@ create_time_series_tab <- function() {
                                     choices = list("Area Chart" = "area", "Line Chart" = "line"),
                                     selected = "area",
                                     inline = TRUE),
-                       checkboxInput("show_trend", "Tampilkan Garis Trend", value = FALSE)
+                       checkboxInput("show_trend", "Tampilkan Garis Trend", value = FALSE),
+                       # TAMBAHKAN TOMBOL DOWNLOAD DI SINI
+                       br(),
+                       downloadButton("download_report", "Download word", 
+                                      class = "btn-primary", 
+                                      icon = icon("download"))
                 )
               )
             )
@@ -471,7 +654,9 @@ create_time_series_tab <- function() {
                    box(title = "Analisis Korelasi", status = "warning", solidHeader = TRUE, width = 12, 
                        plotlyOutput("correlation_plot", height = "350px"))
             )
-          )
+          ),
+          add_interpretation_ui(),
+          add_correlation_interpretation_ui()
   )
 }
 
@@ -518,26 +703,46 @@ create_regression_tab <- function(id_prefix, title) {
   tabItem(tabName = paste0("regresi_", id_prefix),
           fluidRow(
             column(4,
-                   box(title = "Pengaturan Analisis", status = "primary", solidHeader = TRUE, width = 12,
-                       selectInput(paste0("prov_regresi_", id_prefix), "Pilih Provinsi:", 
-                                   choices = c("Pilih Provinsi..." = "")),
-                       radioButtons(paste0("model_select_", id_prefix), "Pilih Model Regresi:",
-                                    choices = list("Linear" = "Linear", "Polinomial Orde 2" = "Polynomial"),
-                                    selected = "Linear", inline = TRUE),
-                       hr(),
-                       h4("Ringkasan Model Terpilih:"),
-                       verbatimTextOutput(paste0("summary_regresi_", id_prefix))
+                   box(
+                     title = "Pengaturan Analisis", status = "primary", solidHeader = TRUE, width = 12,
+                     selectInput(
+                       paste0("prov_regresi_", id_prefix), "Pilih Provinsi:", 
+                       choices = c("Pilih Provinsi..." = "")
+                     ),
+                     radioButtons(
+                       paste0("model_select_", id_prefix), "Pilih Model Regresi:",
+                       choices = list("Linear" = "Linear", "Polinomial Orde 2" = "Polynomial"),
+                       selected = "Linear", inline = TRUE
+                     ),
+                     
+                     # <<< PERUBAHAN DIMULAI DI SINI
+                     hr(), # Tambahkan garis pemisah
+                     downloadButton(
+                       paste0("download_report_", id_prefix), # ID dinamis untuk tombol
+                       "Download Laporan (.docx)",
+                       icon = icon("file-word"),
+                       class = "btn-success" # Warna tombol hijau
+                     )
+                     # <<< AKHIR PERUBAHAN
                    ),
-                   box(title = "Perbandingan Model", status = "warning", solidHeader = TRUE, width = 12,
-                       DT::dataTableOutput(paste0("comparison_table_", id_prefix))
+                   box(
+                     title = "Perbandingan Model", status = "warning", solidHeader = TRUE, width = 12,
+                     DT::dataTableOutput(paste0("comparison_table_", id_prefix))
                    )
             ),
             column(8,
-                   box(title = paste("Grafik Regresi:", title), status = "success", solidHeader = TRUE, width = 12,
-                       plotlyOutput(paste0("plot_regresi_", id_prefix), height = "500px")
+                   box(
+                     title = paste("Grafik Regresi:", title), status = "success", solidHeader = TRUE, width = 12,
+                     plotlyOutput(paste0("plot_regresi_", id_prefix), height = "500px")
                    ),
-                   box(title = "Interpretasi Hasil", status = "info", solidHeader = TRUE, width = 12,
-                       htmlOutput(paste0("interpretasi_", id_prefix))
+                   # Menggabungkan ringkasan dan interpretasi agar lebih rapi
+                   box(
+                     title = "Ringkasan & Interpretasi Hasil", status = "info", solidHeader = TRUE, width = 12,
+                     # verbatimTextOutput untuk output model summary
+                     verbatimTextOutput(paste0("summary_regresi_", id_prefix)),
+                     hr(),
+                     # htmlOutput untuk interpretasi yang sudah diformat
+                     htmlOutput(paste0("interpretasi_", id_prefix))
                    )
             )
           )
@@ -567,6 +772,151 @@ create_data_tab <- function() {
           hr(),
           DT::dataTableOutput("tabel_malaria")
   )
+} 
+
+create_metadata_tab <- function() {
+  tabItem(tabName = "metadata",
+          div(style = "padding: 20px;",
+              h1("Metadata Dashboard Malaria Indonesia", class = "main-title"),
+              
+              # Informasi Dataset
+              h2("Informasi Dataset", class = "section-title"),
+              fluidRow(
+                column(6,
+                       box(title = "Dataset Malaria", status = "danger", solidHeader = TRUE, width = 12, class = "custom-box",
+                           div(class = "about-content",
+                               tags$ul(style = "font-size: 15px; line-height: 1.6;",
+                                       tags$li(strong("Sumber: "), "Kementerian Kesehatan Republik Indonesia"),
+                                       tags$li(strong("Periode: "), "2001 - 2023"),
+                                       tags$li(strong("Unit: "), "Jumlah kasus per provinsi per tahun"),
+                                       tags$li(strong("Cakupan: "), "38 Provinsi Indonesia"),
+                                       tags$li(strong("Format: "), "SPSS (.sav)"),
+                                       tags$li(strong("Variabel: "), "Kasus malaria tahunan (t2001-t2023)")
+                               )
+                           )
+                       )
+                ),
+                column(6,
+                       box(title = "Dataset Iklim", status = "primary", solidHeader = TRUE, width = 12, class = "custom-box",
+                           div(class = "about-content",
+                               tags$ul(style = "font-size: 15px; line-height: 1.6;",
+                                       tags$li(strong("Sumber: "), "Nasa"),
+                                       tags$li(strong("Parameter: "), "Suhu (°C), Curah Hujan (mm), Kelembapan (%)"),
+                                       tags$li(strong("Periode: "), "2001 - 2023"),
+                                       tags$li(strong("Resolusi: "), "Data tahunan per provinsi"),
+                                       tags$li(strong("Format: "), "SPSS (.sav)")
+                               )
+                           )
+                       )
+                )
+              ),
+              
+              # Metodologi
+              h2("Pengolahan Data Peta", class = "section-title"),
+              div(class = "about-content",
+                  tags$h4("Penyesuaian Wilayah Administratif", style = "color: #2c3e50; margin-bottom: 15px;"),
+                  p(style = "font-size: 15px; line-height: 1.6; margin-bottom: 15px;",
+                    "Data telah disesuaikan dengan perubahan wilayah administratif provinsi di Indonesia. Fungsi ", 
+                    code("gabung_provinsi_dinamis()"), " digunakan untuk menggabungkan data provinsi yang terbentuk setelah tahun tertentu dengan provinsi induknya:"
+                  ),
+                  tags$ul(style = "font-size: 14px; line-height: 1.5;",
+                          tags$li("Maluku Utara → Maluku (sebelum 2001)"),
+                          tags$li("Banten → Jawa Barat (sebelum 2001)"),
+                          tags$li("Gorontalo → Sulawesi Utara (sebelum 2001)"),
+                          tags$li("Kepulauan Bangka Belitung → Sumatera Selatan (sebelum 2001)"),
+                          tags$li("Kepulauan Riau → Riau (sebelum 2003)"),
+                          tags$li("Papua Barat → Papua (sebelum 2004)"),
+                          tags$li("Sulawesi Barat → Sulawesi Selatan (sebelum 2005)"),
+                          tags$li("Kalimantan Utara → Kalimantan Timur (sebelum 2013)"),
+                          tags$li("Papua Selatan → Papua (sebelum 2023)"),
+                          tags$li("Papua Tengah → Papua (sebelum 2023)"),
+                          tags$li("Papua Pegunungan → Papua (sebelum 2023)"),
+                          tags$li("Papua Barat Daya → Papua Barat (sebelum 2023)")
+                  )
+              ),
+              
+              # Spesifikasi Teknis
+              h2("Spesifikasi Teknis", class = "section-title"),
+              fluidRow(
+                column(4,
+                       div(class = "stats-box",
+                           h3("R Shiny"),
+                           p("Framework Dashboard")
+                       )
+                ),
+                column(4,
+                       div(class = "stats-box",
+                           h3("Leaflet"),
+                           p("Library Peta Interaktif")
+                       )
+                ),
+                column(4,
+                       div(class = "stats-box",
+                           h3("Plotly"),
+                           p("Visualisasi Interaktif")
+                       )
+                )
+              ),
+              
+              # Struktur Data
+              h2("Struktur Data", class = "section-title"),
+              div(class = "about-content",
+                  tags$h4("Format Data Panjang (Long Format)", style = "color: #2c3e50; margin-bottom: 15px;"),
+                  p(style = "font-size: 15px; line-height: 1.6; margin-bottom: 15px;",
+                    "Data dikonversi dari format lebar ke format panjang untuk analisis time series dan regresi:"
+                  ),
+                  tags$ul(style = "font-size: 14px; line-height: 1.5;",
+                          tags$li(strong("PROVINSI: "), "Nama provinsi (38 provinsi)"),
+                          tags$li(strong("Tahun: "), "Tahun observasi (2001-2023)"),
+                          tags$li(strong("Kasus_Malaria: "), "Jumlah kasus malaria"),
+                          tags$li(strong("Suhu: "), "Suhu rata-rata tahunan (°C)"),
+                          tags$li(strong("Curah_Hujan: "), "Curah hujan tahunan (mm)"),
+                          tags$li(strong("Kelembapan: "), "Kelembapan relatif rata-rata (%)")
+                  )
+              ),
+              
+              # Analisis Statistik
+              h2("Metode Analisis", class = "section-title"),
+              fluidRow(
+                column(6,
+                       box(title = "Analisis Regresi", status = "success", solidHeader = TRUE, width = 12, class = "custom-box",
+                           div(class = "about-content",
+                               tags$ul(style = "font-size: 15px; line-height: 1.6;",
+                                       tags$li(strong("Regresi Linear: "), "Y = β₀ + β₁X + ε"),
+                                       tags$li(strong("Regresi Polinomial: "), "Y = β₀ + β₁X + β₂X² + ε"),
+                                       tags$li(strong("Metrik Evaluasi: "), "R², Adjusted R², P-value"),
+                                       tags$li(strong("Interpretasi: "), "Signifikansi statistik dan praktis")
+                               )
+                           )
+                       )
+                ),
+                column(6,
+                       box(title = "Analisis Time Series", status = "warning", solidHeader = TRUE, width = 12, class = "custom-box",
+                           div(class = "about-content",
+                               tags$ul(style = "font-size: 15px; line-height: 1.6;",
+                                       tags$li(strong("Visualisasi: "), "Area chart dan line chart"),
+                                       tags$li(strong("Trend Analysis: "), "Garis trend linear"),
+                                       tags$li(strong("Korelasi: "), "Matriks korelasi antar variabel"),
+                                       tags$li(strong("Agregasi: "), "Statistik deskriptif per provinsi")
+                               )
+                           )
+                       )
+                )
+              ),
+              
+              # Batasan dan Catatan
+              h2("Batasan dan Catatan Penting", class = "section-title"),
+              div(class = "about-content",
+                  tags$ul(style = "font-size: 15px; line-height: 1.6;",
+                          tags$li(strong("Kualitas Data: "), "Beberapa provinsi memiliki data yang tidak lengkap untuk periode tertentu"),
+                          tags$li(strong("Interpretasi Kausal: "), "Analisis menunjukkan asosiasi, bukan hubungan sebab-akibat"),
+                          tags$li(strong("Resolusi Temporal: "), "Data agregat tahunan, tidak menangkap variasi musiman"),
+                          tags$li(strong("Faktor Eksternal: "), "Tidak memperhitungkan faktor sosial-ekonomi dan intervensi kesehatan"),
+                          tags$li(strong("Pembaruan Data: "), "Dashboard ini menggunakan data hingga tahun 2023")
+                  )
+              )
+          )
+  )
 }
 
 # Main UI ----
@@ -588,6 +938,7 @@ ui <- dashboardPage(
                menuSubItem("Malaria vs Curah Hujan", tabName = "regresi_hujan"), 
                menuSubItem("Malaria vs Kelembapan", tabName = "regresi_lembap")
       ),
+      menuItem("METADATA", tabName = "metadata", icon = icon("info-circle")), 
       menuItem("Unduh Data", tabName = "data", icon = icon("download"))
     )
   ),
@@ -601,7 +952,7 @@ ui <- dashboardPage(
       create_map_tab("peta_malaria", "indonesia_malaria_map", "year", "PETA MALARIA", 
                      "Warna menunjukkan tingkat kasus malaria: Kuning: Rendah → Merah: Tinggi"),
       create_map_tab("peta_suhu", "peta_suhu_map", "year_suhu", "PETA SUHU", 
-                     "Warna menunjukkan tingkat suhu: Biru: Sejuk → Merah: Panas"),
+                     "Warna menunjukkan tingkat suhu: putih: Sejuk → Merah: Panas"),
       create_map_tab("peta_hujan", "peta_hujan_map", "year_hujan", "PETA CURAH HUJAN", 
                      "Warna menunjukkan tingkat curah hujan: Putih: Kering → Biru: Basah"),
       create_map_tab("peta_lembap", "peta_lembap_map", "year_lembap", "PETA KELEMBAPAN", 
@@ -609,6 +960,7 @@ ui <- dashboardPage(
       create_regression_tab("suhu", "Malaria vs Suhu"),
       create_regression_tab("hujan", "Malaria vs Curah Hujan"),
       create_regression_tab("lembap", "Malaria vs Kelembapan"),
+      create_metadata_tab(), 
       create_data_tab()
     )
   )
@@ -775,7 +1127,256 @@ server <- function(input, output, session) {
         xaxis = list(title = ""),
         yaxis = list(title = "")
       )
+  }) 
+  
+  analyze_trend <- function(data, variable) {
+    if(nrow(data) < 3 || all(is.na(data[[variable]]))) {
+      return(list(trend = "unknown", slope = 0, r_squared = 0))
+    }
+    
+    clean_data <- data %>% filter(!is.na(.data[[variable]]))
+    if(nrow(clean_data) < 3) {
+      return(list(trend = "unknown", slope = 0, r_squared = 0))
+    }
+    
+    model <- lm(clean_data[[variable]] ~ clean_data$Tahun)
+    slope <- coef(model)[2]
+    r_squared <- summary(model)$r.squared
+    
+    trend <- case_when(
+      abs(slope) < 0.1 ~ "stable",
+      slope > 0 ~ "increasing",
+      slope < 0 ~ "decreasing",
+      TRUE ~ "unknown"
+    )
+    
+    return(list(trend = trend, slope = slope, r_squared = r_squared))
+  } 
+  
+  interpret_correlation <- function(cor_value) {
+    abs_cor <- abs(cor_value)
+    strength <- case_when(
+      abs_cor >= 0.7 ~ "kuat",
+      abs_cor >= 0.5 ~ "sedang",
+      abs_cor >= 0.3 ~ "lemah",
+      TRUE ~ "sangat lemah"
+    )
+    
+    direction <- ifelse(cor_value > 0, "positif", "negatif")
+    
+    return(list(strength = strength, direction = direction))
+  } 
+  
+  # Interpretasi trend time series
+  output$trend_interpretation <- renderUI({
+    data <- ts_data()
+    province <- input$provinsi_ts
+    
+    if(nrow(data) < 3) {
+      return(div("Data tidak cukup untuk analisis trend."))
+    }
+    
+    # Analisis trend untuk setiap variabel
+    malaria_trend <- analyze_trend(data, "Kasus_Malaria")
+    suhu_trend <- analyze_trend(data, "Suhu")
+    hujan_trend <- analyze_trend(data, "Curah_Hujan")
+    lembap_trend <- analyze_trend(data, "Kelembapan")
+    
+    # Fungsi helper untuk trend indicator
+    trend_indicator <- function(trend) {
+      class_name <- paste0("trend-", trend)
+      icon_name <- case_when(
+        trend == "increasing" ~ "arrow-up",
+        trend == "decreasing" ~ "arrow-down",
+        trend == "stable" ~ "minus",
+        TRUE ~ "question"
+      )
+      
+      text <- case_when(
+        trend == "increasing" ~ "Meningkat",
+        trend == "decreasing" ~ "Menurun",
+        trend == "stable" ~ "Stabil",
+        TRUE ~ "Tidak Jelas"
+      )
+      
+      span(class = paste("trend-indicator", class_name),
+           icon(icon_name), " ", text)
+    }
+    
+    # Interpretasi statistik
+    year_range <- paste(min(data$Tahun), "-", max(data$Tahun))
+    
+    div(
+      h4(paste("Analisis Trend Provinsi", province, "Periode", year_range)),
+      
+      div(class = "interpretation-highlight",
+          p(strong("Kasus Malaria: "), trend_indicator(malaria_trend$trend)),
+          p(paste("Dalam periode", year_range, "kasus malaria di", province, 
+                  switch(malaria_trend$trend,
+                         "increasing" = "menunjukkan tren peningkatan.",
+                         "decreasing" = "menunjukkan tren penurunan.",
+                         "stable" = "relatif stabil.",
+                         "menunjukkan pola yang tidak jelas.")))
+      ),
+      
+      h5("Faktor Iklim:"),
+      tags$ul(
+        tags$li(strong("Suhu: "), trend_indicator(suhu_trend$trend)),
+        tags$li(strong("Curah Hujan: "), trend_indicator(hujan_trend$trend)),
+        tags$li(strong("Kelembapan: "), trend_indicator(lembap_trend$trend))
+      ),
+      
+      if(malaria_trend$r_squared > 0.3) {
+        div(
+          p(strong("Catatan: "), 
+            "Tren kasus malaria menunjukkan pola yang cukup konsisten (R² = ", 
+            round(malaria_trend$r_squared, 3), ") yang mengindikasikan adanya faktor sistematis yang mempengaruhi perubahan kasus.")
+        )
+      }
+    )
   })
+  
+  # Interpretasi korelasi
+  output$correlation_interpretation <- renderUI({
+    data <- ts_data()
+    province <- input$provinsi_ts
+    
+    if(nrow(data) < 3) {
+      return(div("Data tidak cukup untuk analisis korelasi."))
+    }
+    
+    # Validasi dan bersihkan data
+    cor_vars <- c("Kasus_Malaria", "Suhu", "Curah_Hujan", "Kelembapan")
+    
+    # Periksa apakah kolom ada dan numerik
+    missing_cols <- setdiff(cor_vars, names(data))
+    if(length(missing_cols) > 0) {
+      return(div(paste("Kolom tidak ditemukan:", paste(missing_cols, collapse = ", "))))
+    }
+    
+    # Konversi ke numeric dan filter data valid
+    clean_data <- data %>%
+      select(all_of(cor_vars)) %>%
+      mutate(across(everything(), as.numeric)) %>%
+      filter(complete.cases(.))
+    
+    if(nrow(clean_data) < 3) {
+      return(div("Data numerik tidak cukup untuk analisis korelasi."))
+    }
+    
+    # Hitung korelasi dengan error handling
+    cor_data <- tryCatch({
+      cor(clean_data, use = "complete.obs")
+    }, error = function(e) {
+      return(NULL)
+    })
+    
+    if(is.null(cor_data)) {
+      return(div("Gagal menghitung korelasi. Periksa data input."))
+    }
+    
+    # Interpretasi korelasi utama dengan validasi
+    suhu_cor_val <- cor_data["Kasus_Malaria", "Suhu"]
+    hujan_cor_val <- cor_data["Kasus_Malaria", "Curah_Hujan"]
+    lembap_cor_val <- cor_data["Kasus_Malaria", "Kelembapan"]
+    suhu_hujan_cor_val <- cor_data["Suhu", "Curah_Hujan"]
+    
+    # Validasi nilai korelasi
+    if(any(is.na(c(suhu_cor_val, hujan_cor_val, lembap_cor_val)))) {
+      return(div("Beberapa nilai korelasi tidak dapat dihitung."))
+    }
+    
+    suhu_cor <- interpret_correlation(suhu_cor_val)
+    hujan_cor <- interpret_correlation(hujan_cor_val)
+    lembap_cor <- interpret_correlation(lembap_cor_val)
+    
+    div(
+      h4(paste("Analisis Korelasi Provinsi", province)),
+      
+      div(
+        h5("Hubungan Kasus Malaria dengan Faktor Iklim:"),
+        tags$ul(
+          tags$li(
+            strong("Suhu: "),
+            paste("Korelasi", suhu_cor$strength, suhu_cor$direction, 
+                  "(r =", round(suhu_cor_val, 3), ")")
+          ),
+          tags$li(
+            strong("Curah Hujan: "),
+            paste("Korelasi", hujan_cor$strength, hujan_cor$direction,
+                  "(r =", round(hujan_cor_val, 3), ")")
+          ),
+          tags$li(
+            strong("Kelembapan: "),
+            paste("Korelasi", lembap_cor$strength, lembap_cor$direction,
+                  "(r =", round(lembap_cor_val, 3), ")")
+          )
+        )
+      ),
+      
+      div(class = "interpretation-highlight",
+          h5("Interpretasi Epidemiologi:"),
+          p(
+            if(suhu_cor_val > 0.3) {
+              "Suhu yang lebih tinggi cenderung meningkatkan kasus malaria, kemungkinan karena mempercepat siklus hidup nyamuk Anopheles."
+            } else if(suhu_cor_val < -0.3) {
+              "Suhu yang lebih rendah cenderung mengurangi kasus malaria, kemungkinan karena menghambat aktivitas nyamuk."
+            } else {
+              "Tidak ada hubungan yang kuat antara suhu dan kasus malaria di provinsi ini."
+            }
+          ),
+          p(
+            if(hujan_cor_val > 0.3) {
+              "Curah hujan yang tinggi cenderung meningkatkan kasus malaria, kemungkinan karena menciptakan tempat perindukan nyamuk."
+            } else if(hujan_cor_val < -0.3) {
+              "Curah hujan yang rendah cenderung mengurangi kasus malaria, kemungkinan karena mengurangi habitat nyamuk."
+            } else {
+              "Tidak ada hubungan yang kuat antara curah hujan dan kasus malaria di provinsi ini."
+            }
+          ), 
+          p(
+            if(lembap_cor_val > 0.3) {
+              "Kelembapan udara yang tinggi cenderung meningkatkan kasus malaria. Ini karena kelembapan mendukung kelangsungan hidup nyamuk dewasa, sehingga mereka punya lebih banyak waktu untuk menularkan parasit."
+            } else if(lembap_cor_val < -0.3) {
+              "Kelembapan udara yang rendah cenderung menekan kasus malaria. Udara yang kering dapat menyebabkan dehidrasi dan kematian pada nyamuk, sehingga mengurangi populasi dan laju penularan."
+            } else {
+              "Tidak ditemukan hubungan yang signifikan secara statistik antara tingkat kelembapan udara dan jumlah kasus malaria di provinsi ini."
+            }
+          )
+      ),
+      
+      if(abs(suhu_hujan_cor_val) > 0.5) {
+        div(
+          p(strong("Catatan: "), 
+            "Terdapat hubungan yang cukup kuat antara suhu dan curah hujan (r = ", 
+            round(suhu_hujan_cor_val, 3), 
+            "), yang menunjukkan pola iklim yang saling terkait di wilayah ini.")
+        )
+      }
+    )
+  }) 
+  output$download_report <- downloadHandler(
+    filename = function() {
+      paste0("Laporan_Malaria_", gsub(" ", "_", input$provinsi_ts), "_", input$tahun_range[1], "-", input$tahun_range[2], ".docx")
+    },
+    content = function(file) {
+      id <- showNotification("Membuat laporan Word...", duration = NULL, closeButton = FALSE)
+      on.exit(removeNotification(id))
+      
+      params <- list(
+        province = input$provinsi_ts,
+        year_range = paste(input$tahun_range[1], "-", input$tahun_range[2]),
+        ts_data = ts_data()
+      )
+      
+      rmarkdown::render(
+        "report_template.Rmd",
+        output_file = file,
+        params = params,
+        envir = new.env(parent = globalenv())
+      )
+    }
+  )
   
   # =====================================
   # MAP SERVER LOGIC
@@ -898,7 +1499,7 @@ server <- function(input, output, session) {
   
   # Create all map observers
   create_map_observer("indonesia_malaria_map", "year", data_malaria, "YlOrRd", "", "Kasus Malaria")
-  create_map_observer("peta_suhu_map", "year_suhu", data_suhu, "RdYlBu", "°C", "Suhu")
+  create_map_observer("peta_suhu_map", "year_suhu", data_suhu, "Reds", "°C", "Suhu")
   create_map_observer("peta_hujan_map", "year_hujan", data_hujan, "Blues", " mm", "Curah Hujan")
   create_map_observer("peta_lembap_map", "year_lembap", data_lembap, "YlGn", "%", "Kelembapan")
   
@@ -916,13 +1517,16 @@ server <- function(input, output, session) {
   })
   
   # Helper function to create regression server logic
-  create_regression_server <- function(id_prefix, x_var, x_label, plot_color) {
+  create_regression_server <- function(id_prefix, x_var, x_label, plot_color, title) { # <<< TAMBAHKAN argumen 'title'
+    
+    # Bagian ini tetap sama
     analysis_results <- eventReactive(input[[paste0("prov_regresi_", id_prefix)]], {
       req(input[[paste0("prov_regresi_", id_prefix)]] != "")
       data_prov <- longdata %>% filter(PROVINSI == input[[paste0("prov_regresi_", id_prefix)]])
       analyze_both_regressions(data_prov, x_var, "Kasus_Malaria")
     })
     
+    # Semua output untuk tampilan di dasbor tetap sama
     output[[paste0("plot_regresi_", id_prefix)]] <- renderPlotly({
       results <- analysis_results()
       if(!results$sufficient_data) return(plotly_empty() %>% layout(title = results$message))
@@ -934,7 +1538,7 @@ server <- function(input, output, session) {
       fitted_values[fitted_values < 0] <- 0
       sorted_fitted_values <- fitted_values[order(results$data[[x_var]])]
       
-      plot_ly(data = results$data, x = ~get(x_var), y = ~Kasus_Malaria, 
+      plot_ly(data = results$data, x = as.formula(paste0("~", x_var)), y = ~Kasus_Malaria, 
               type = 'scatter', mode = 'markers', 
               marker = list(size = 8, color = plot_color, opacity = 0.7), 
               name = "Data Observasi") %>%
@@ -966,26 +1570,58 @@ server <- function(input, output, session) {
     output[[paste0("interpretasi_", id_prefix)]] <- renderUI({
       results <- analysis_results()
       req(results$sufficient_data)
-      
       model_choice <- input[[paste0("model_select_", id_prefix)]]
       selected_result <- if (model_choice == "Linear") results$linear else results$polynomial
-      
       HTML(create_single_interpretation(selected_result, model_choice))
     })
     
     output[[paste0("summary_regresi_", id_prefix)]] <- renderPrint({
       results <- analysis_results()
       req(results$sufficient_data)
-      
       model_choice <- input[[paste0("model_select_", id_prefix)]]
       print(if (model_choice == "Linear") results$linear$summary else results$polynomial$summary)
     })
+    
+    ### DOWNLOAD LAPORAN 
+    output[[paste0("download_report_", id_prefix)]] <- downloadHandler(
+      filename = function() {
+        paste0("Laporan_Regresi_", 
+               gsub(" ", "_", input[[paste0("prov_regresi_", id_prefix)]]), "_", 
+               format(Sys.Date(), "%Y%m%d"), ".docx")
+      },
+      content = function(file) {
+        id <- showNotification("Membuat laporan Word...", duration = NULL, closeButton = FALSE)
+        on.exit(removeNotification(id))
+        
+        # Ambil data yang diperlukan
+        results <- analysis_results()
+        req(results$sufficient_data)
+        
+        # Parameter untuk template
+        params <- list(
+          province = input[[paste0("prov_regresi_", id_prefix)]],
+          analysis_title = title,
+          model_type = input[[paste0("model_select_", id_prefix)]],
+          regression_data = results$data,
+          x_var = x_var
+        )
+        
+        # Render ke Word
+        rmarkdown::render(
+          "regression_report_template.Rmd",
+          output_file = file,
+          params = params,
+          envir = new.env(parent = globalenv())
+        )
+      }
+    )
   }
   
   # Create regression servers
-  create_regression_server("suhu", "Suhu", "Suhu (°C)", "#3498db")
-  create_regression_server("hujan", "Curah_Hujan", "Curah Hujan (mm)", "#2ecc71")
-  create_regression_server("lembap", "Kelembapan", "Kelembapan (%)", "#f39c12")
+  # Create regression servers
+  create_regression_server("suhu", "Suhu", "Suhu (°C)", "#3498db", title = "Malaria vs Suhu")
+  create_regression_server("hujan", "Curah_Hujan", "Curah Hujan (mm)", "#2ecc71", title = "Malaria vs Curah Hujan")
+  create_regression_server("lembap", "Kelembapan", "Kelembapan (%)", "#f39c12", title = "Malaria vs Kelembapan")
   
   # =====================================
   # DATA DOWNLOAD SERVER LOGIC
@@ -1017,7 +1653,6 @@ server <- function(input, output, session) {
     content = function(file) writexl::write_xlsx(filtered_data(), path = file)
   )
 }
-
 # =====================================
 # RUN APPLICATION
 # =====================================

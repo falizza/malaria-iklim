@@ -1,0 +1,60 @@
+---
+title: "Laporan Analisis Regresi"
+subtitle: "Analisis Malaria di Provinsi `r params$province`"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output: 
+  word_document:
+    toc: true
+params:
+  province: "Default"
+  analysis_title: "Default"
+  model_type: "Linear"
+  regression_data: !r data.frame()
+  x_var: "Default"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+# Ringkasan Laporan
+
+**Provinsi:** `r params$province`  
+**Tanggal:** `r format(Sys.Date(), "%d %B %Y")`  
+**Model:** `r params$model_type`  
+**Variabel:** `r params$x_var` vs Kasus Malaria
+
+# Data Analisis
+
+```{r}
+if(nrow(params$regression_data) > 0) {
+  knitr::kable(params$regression_data, 
+               caption = "Data yang digunakan dalam analisis")
+} else {
+  cat("Data tidak tersedia")
+}
+```
+
+# Visualisasi
+
+```{r}
+if(nrow(params$regression_data) > 0) {
+  plot(params$regression_data[[params$x_var]], 
+       params$regression_data[["Kasus_Malaria"]],
+       main = paste("Hubungan", params$x_var, "dengan Kasus Malaria"),
+       xlab = params$x_var,
+       ylab = "Kasus Malaria",
+       pch = 19, col = "blue")
+  
+  # Tambahkan garis regresi
+  if(params$model_type == "Linear") {
+    abline(lm(params$regression_data[["Kasus_Malaria"]] ~ 
+              params$regression_data[[params$x_var]]), 
+           col = "red", lwd = 2)
+  }
+}
+```
+
+# Kesimpulan
+
+Analisis regresi `r params$model_type` telah dilakukan untuk data Provinsi `r params$province`.

@@ -1,0 +1,62 @@
+---
+title: "Laporan Analisis Malaria"
+subtitle: "Provinsi `r params$province` - Periode `r params$year_range`"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  word_document:
+    toc: true
+params:
+  province: "Default"
+  year_range: "2001-2023"
+  ts_data: !r data.frame()
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(patchwork)
+library(tidyr) 
+```
+
+```{r}
+if (!is.null(params$ts_data) && nrow(params$ts_data) > 0) {
+  summary_df <- params$ts_data %>%
+    summarise(
+      "Total Kasus Malaria" = format(sum(Kasus_Malaria, na.rm = TRUE), big.mark = "."),
+      "Rata-rata Suhu" = paste0(round(mean(Suhu, na.rm = TRUE), 1), "°C"),
+      "Rata-rata Curah Hujan" = paste0(round(mean(Curah_Hujan, na.rm = TRUE), 1), " mm")
+    ) %>%
+    pivot_longer(everything(), names_to = "Indikator", values_to = "Nilai")
+  
+  kable(summary_df, caption = "Ringkasan Statistik Data")
+}
+
+```
+
+```{r}
+if (!is.null(params$ts_data) && nrow(params$ts_data) > 0) {
+  p1 <- ggplot(params$ts_data, aes(x = Tahun, y = Kasus_Malaria)) + geom_line(color="#d73027") + labs(subtitle="Kasus Malaria", y = "Jumlah") + theme_bw()
+  p2 <- ggplot(params$ts_data, aes(x = Tahun, y = Suhu)) + geom_line(color="#f46d43") + labs(subtitle="Suhu (°C)", y = "Derajat Celsius") + theme_bw()
+  p3 <- ggplot(params$ts_data, aes(x = Tahun, y = Curah_Hujan)) + geom_line(color="#2166ac") + labs(subtitle="Curah Hujan (mm)", y = "Milimeter") + theme_bw()
+  p4 <- ggplot(params$ts_data, aes(x = Tahun, y = Kelembapan)) + geom_line(color="#1b7837") + labs(subtitle="Kelembapan (%)", y = "Persentase") + theme_bw()
+  
+  (p1 + p2) / (p3 + p4)
+}
+
+```
+
+```{r}
+if (!is.null(params$ts_data) && nrow(params$ts_data) > 2) {
+  cor_data <- params$ts_data %>%
+    select(`Malaria` = Kasus_Malaria, Suhu, `Hujan` = Curah_Hujan, `Lembap` = Kelembapan) %>%
+    cor(use = "pairwise.complete.obs") # 'pairwise' lebih toleran thd NA
+  
+  kable(cor_data, digits = 3, caption = "Nilai korelasi antar variabel kunci.")
+} else {
+  cat("Data tidak cukup untuk analisis korelasi.")
+}
+
+```
+
